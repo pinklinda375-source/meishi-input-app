@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meishi Input App</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/17.0.2/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/17.0.2/umd/react-dom.production.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body>
+<div id="app"></div>
+
+<script type="text/babel">
+class App extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            questions: [],
+            currentQuestionIndex: 0,
+            mode: 'practice', // 'practice', 'review', 'history'
+            results: [],
+            incorrectAnswers: [],
+            startTime: null,
+            endTime: null
+        };
+    }
+
+    componentDidMount() {
+        // Load questions and setup
+        this.loadQuestions();
+        this.loadHistory();
+    }
+
+    loadQuestions() {
+        // Mock load questions
+        this.setState({ questions: generateQuestions() });
+    }
+
+    loadHistory() {
+        const history = JSON.parse(localStorage.getItem('practiceHistory')) || [];
+        this.setState({ results: history });
+    }
+
+    startPractice = () => {
+        this.setState({ currentQuestionIndex: 0, startTime: new Date() });
+    };
+
+    submitAnswer = (answer) => {
+        const { questions, currentQuestionIndex } = this.state;
+        if (answer !== questions[currentQuestionIndex].correctAnswer) {
+            this.setState(prevState => ({
+                incorrectAnswers: [...prevState.incorrectAnswers, questions[currentQuestionIndex]]
+            }));
+        }
+        this.nextQuestion();
+    };
+
+    nextQuestion = () => {
+        this.setState(prevState => ({ currentQuestionIndex: prevState.currentQuestionIndex + 1 }));
+    };
+
+    endSession = () => {
+        const endTime = new Date();
+        const totalTime = endTime - this.state.startTime;
+        const results = [...this.state.results, { ...this.state, endTime, totalTime }];
+        localStorage.setItem('practiceHistory', JSON.stringify(results));
+        this.setState({ results, mode: 'history' });
+    };
+
+    render() {
+        const { mode, questions, currentQuestionIndex } = this.state;
+        return (
+            <div className="p-6">
+                {mode === 'practice' && <PracticeScreen questions={questions} submitAnswer={this.submitAnswer} />}
+                {mode === 'review' && <ReviewScreen questions={this.state.incorrectAnswers} submitAnswer={this.submitAnswer} />}
+                {mode === 'history' && <HistoryScreen results={this.state.results} />}
+                <button onClick={this.startPractice} className="btn">Start Practice</button>
+                <button onClick={this.endSession} className="btn">End Session</button>
+            </div>
+        );
+    }
+}
+
+const PracticeScreen = ({ questions, submitAnswer }) => {
+    return (
+        <div>
+            <h2>Practice Screen</h2>
+            {/* Render questions here */}
+        </div>
+    );
+};
+
+const ReviewScreen = ({ questions, submitAnswer }) => {
+    return (
+        <div>
+            <h2>Review Mode</h2>
+            {/* Render questions that were answered incorrectly */}
+        </div>
+    );
+};
+
+const HistoryScreen = ({ results }) => {
+    return (
+        <div>
+            <h2>History View</h2>
+            {/* Render past practice sessions */}
+        </div>
+    );
+};
+
+const generateQuestions = () => {
+    return [
+        { question: 'Sample Question 1', correctAnswer: 'Answer1' },
+        { question: 'Sample Question 2', correctAnswer: 'Answer2' }
+    ];
+};
+
+ReactDOM.render(<App />, document.getElementById('app'));
+</script>
+</body>
+</html>
