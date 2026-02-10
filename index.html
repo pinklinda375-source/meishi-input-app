@@ -1,3 +1,908 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>名刺入力アプリ</title>
+    <meta name="description" content="名刺入力アプリ">
+    <meta name="theme-color" content="#4f46e5">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="./manifest.json">
+    <link rel="icon" href="./icons/icon-192.png" sizes="192x192">
+    <link rel="apple-touch-icon" href="./icons/icon-192.png">
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const BusinessCardTrainingApp = () => {
+          const [screen, setScreen] = useState('setup');
+          const [totalQuestions, setTotalQuestions] = useState(10);
+          const [selectedFields, setSelectedFields] = useState({
+            cardNumber: true,
+            companyName: true,
+            name: true,
+            position: true,
+            zipCode: true,
+            address: true,
+            phone: true,
+            fax: false,
+            mobile: false,
+            email: true,
+            url: false
+          });
+          
+          const [questions, setQuestions] = useState([]);
+          const [currentIndex, setCurrentIndex] = useState(0);
+          const [answers, setAnswers] = useState({});
+          const [results, setResults] = useState([]);
+          const [showResult, setShowResult] = useState(false);
+          
+          const [startTime, setStartTime] = useState(null);
+          const [questionStartTime, setQuestionStartTime] = useState(null);
+          const [timeTaken, setTimeTaken] = useState([]);
+          const [currentTime, setCurrentTime] = useState(0);
+          
+          const [history, setHistory] = useState([]);
+          
+          const [reviewMode, setReviewMode] = useState(false);
+          const [incorrectQuestions, setIncorrectQuestions] = useState([]);
+
+          useEffect(() => {
+            if (screen === 'training' && questionStartTime) {
+              const timer = setInterval(() => {
+                setCurrentTime(Date.now() - questionStartTime);
+              }, 100);
+              return () => clearInterval(timer);
+            }
+          }, [screen, questionStartTime]);
+
+          useEffect(() => {
+            const savedHistory = localStorage.getItem('trainingHistory');
+            if (savedHistory) {
+              setHistory(JSON.parse(savedHistory));
+            }
+          }, []);
+
+          const fieldLabels = {
+            cardNumber: 'カード番号',
+            companyName: '会社名',
+            name: '氏名',
+            position: '役職',
+            zipCode: '郵便番号',
+            address: '住所',
+            phone: '電話番号',
+            fax: 'FAX番号',
+            mobile: '携帯電話',
+            email: 'メールアドレス',
+            url: 'URL'
+          };
+
+          const lastNames = ['佐藤', '鈴木', '高橋', '田中', '伊藤', '渡辺', '山本', '中村', '小林', '加藤', '吉田', '山田', '佐々木', '山口', '松本', '井上', '木村', '林', '斎藤', '清水', '山崎', '森', '池田', '橋本', '阿部', '石川', '山下', '中島', '前田', '藤田', '岡田', '後藤', '長谷川', '村上', '近藤', '石井', '遠藤', '青木', '坂本', '福田', '西村', '太田', '岡本', '藤井', '金子', '中野', '原田', '藤原', '野口', '三浦', '原', '菊地', '柴田', '菅原', '宮本', '高木', '大塚', '小野', '安田', '丸山', '望月', '川崎', '平野', '石田', '小野寺', '上野', '岩崎', '大野', '杉山', '新井', '渡部', '横山', '熊谷', '窪田', '溝口', '上田', '高田', '植田', '小島', '岩田', '矢野', '吉岡', '小泉', '小沢', '飯田', '若松', '宮崎', '竹内', '佐野', '菊池', '宇野', '吉川', '杉田', '谷口', '武田', '小田', '須藤', '島田', '宮田', '松田', '小川'];
+          
+          const firstNamesMale = ['健太郎', '大輔', '翔太', '拓也', '達也', '淳', '誠', '修', '剛', '浩', '隆', '聡', '正樹', '秀樹', '哲也', '和也', '直樹', '雄一', '優', '涼介', '健一', '勇', '航', '蓮', '颯太', '陸', '悠斗', '陽介', '大地', '駿', '将太', '貴之', '孝', '裕二', '康平', '慎一', '亮', '智也', '光', '仁', '清', '正', '茂', '博', '健', '和雄', '昭雄', '隆夫', '幸夫'];
+          
+          const firstNamesFemale = ['美咲', '裕子', '真由美', '恵子', '陽子', '麻衣', '優子', '千代', '愛', '舞', '結衣', '菜々子', '彩', '美穂', '由美', '明美', '真理', '京子', '友美', '直美', '絵美', '香織', '理恵', '沙織', '奈々', '瞳', '亜美', '智子', '幸子', '桜', '花子', '葵', '梓', '茜', '楓', '凛', '美優', '七海', '陽菜', '心', '和子', '洋子', '節子', '文子', '恵', '久美子'];
+
+          const companyPrefixes = ['東京', '大阪', '横浜', '名古屋', '札幌', '神戸', '京都', '福岡', '仙台', '広島', '関西', '関東', '中部', '九州', '北海道', '東北', '四国', '中国', '北陸', '首都圏', '日本', '全国', '中央', '太平洋', '日東', '西日本', '東日本', '南関東', '北関東', '甲信越'];
+          
+          const companyTypes = ['システム', '商事', 'エンジニアリング', '建設', '物流', 'コンサルティング', 'デザイン', 'フーズ', '製薬', 'トラベル', 'テクノロジー', 'ソリューションズ', 'インダストリー', 'マーケティング', '不動産', '開発', '通信', '電子', '機械', '化学', '金属', '繊維', '食品', '運輸', '情報', '総合', 'サービス', 'プラント', '精密', '自動車'];
+          
+          const companySuffixes = ['株式会社', '有限会社', '合同会社'];
+          const companyDescriptors = ['ホールディングス', 'グループ', 'パートナーズ', 'ラボ', 'リサーチ', 'ネットワークス', 'テック', 'デジタル', 'リンク', 'メディア', 'ソフト', 'プランニング'];
+
+          const positions = ['代表取締役社長', '代表取締役', '取締役', '常務取締役', '専務取締役', '営業部長', '営業部 部長', '営業部 課長', '営業部 係長', '営業部 主任', '技術部長', '技術部 部長', '技術部 課長', '技術部 主任', '技術部 部長代理', '総務部長', '総務部 部長', '総務部 課長', '総務部 係長', '経理部長', '経理部 課長', '人事部長', '人事部 課長', '企画営業部 部長', '企画営業部 課長', '企画営業部 係長', '開発部 部長', '開発部 課長', '研究開発部 研究員', '研究開発部 主任研究員', 'マーケティング部長', 'マーケティング部 課長', '製造部長', '製造部 課長', '品質管理部 課長', '物流管理部 部長', '物流管理部 課長', '購買部 課長', 'クリエイティブディレクター', 'プロジェクトマネージャー', 'シニアコンサルタント', 'コンサルタント', 'アナリスト'];
+
+          const locations = [
+            { zip: '100-0001', pref: '東京都', city: '千代田区千代田', area: '03' },
+            { zip: '530-0001', pref: '大阪府', city: '大阪市北区梅田', area: '06' },
+            { zip: '460-0008', pref: '愛知県', city: '名古屋市中区栄', area: '052' },
+            { zip: '810-0001', pref: '福岡県', city: '福岡市中央区天神', area: '092' },
+            { zip: '060-0001', pref: '北海道', city: '札幌市中央区北1条西', area: '011' },
+            { zip: '980-0021', pref: '宮城県', city: '仙台市青葉区中央', area: '022' },
+            { zip: '220-0011', pref: '神奈川県', city: '横浜市西区高島', area: '045' },
+            { zip: '760-0001', pref: '香川県', city: '高松市浜ノ町', area: '087' },
+            { zip: '103-0027', pref: '東京都', city: '中央区日本橋', area: '03' },
+            { zip: '900-0015', pref: '沖縄県', city: '那覇市久茂地', area: '098' },
+            { zip: '150-0001', pref: '東京都', city: '渋谷区神宮前', area: '03' },
+            { zip: '600-8216', pref: '京都府', city: '京都市下京区烏丸通', area: '075' },
+            { zip: '650-0001', pref: '兵庫県', city: '神戸市中央区加納町', area: '078' },
+            { zip: '730-0011', pref: '広島県', city: '広島市中区基町', area: '082' },
+            { zip: '951-8062', pref: '新潟県', city: '新潟市中央区西堀前通', area: '025' }
+          ];
+
+          const randomNum = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+          
+          const generatePhone = (area) => `${area}-${randomNum(1000, 9999)}-${randomNum(1000, 9999)}`;
+          const generateMobile = () => {
+            const prefixes = ['080', '090', '070'];
+            return `${prefixes[randomNum(0, 2)]}-${randomNum(1000, 9999)}-${randomNum(1000, 9999)}`;
+          };
+
+          const toRomaji = (text) => {
+            const romajiMap = {
+              '佐藤': 'sato', '鈴木': 'suzuki', '高橋': 'takahashi', '田中': 'tanaka', '伊藤': 'ito',
+              '渡辺': 'watanabe', '山本': 'yamamoto', '中村': 'nakamura', '小林': 'kobayashi', '加藤': 'kato',
+              '吉田': 'yoshida', '山田': 'yamada', '佐々木': 'sasaki', '山口': 'yamaguchi', '松本': 'matsumoto',
+              '井上': 'inoue', '木村': 'kimura', '林': 'hayashi', '斎藤': 'saito', '清水': 'shimizu',
+              '山崎': 'yamazaki', '森': 'mori', '池田': 'ikeda', '橋本': 'hashimoto', '阿部': 'abe',
+              '石川': 'ishikawa', '山下': 'yamashita', '中島': 'nakajima', '前田': 'maeda', '藤田': 'fujita',
+              '岡田': 'okada', '後藤': 'goto', '長谷川': 'hasegawa', '村上': 'murakami', '近藤': 'kondo',
+              '石井': 'ishii', '遠藤': 'endo', '青木': 'aoki', '坂本': 'sakamoto', '福田': 'fukuda',
+              '西村': 'nishimura', '太田': 'ota', '岡本': 'okamoto', '藤井': 'fujii', '金子': 'kaneko',
+              '中野': 'nakano', '原田': 'harada', '藤原': 'fujiwara', '野口': 'noguchi', '三浦': 'miura',
+              '原': 'hara', '菊地': 'kikuchi', '柴田': 'shibata', '菅原': 'sugawara', '宮本': 'miyamoto',
+              '高木': 'takagi', '大塚': 'otsuka', '小野': 'ono', '安田': 'yasuda', '丸山': 'maruyama',
+              '望月': 'mochizuki', '川崎': 'kawasaki', '平野': 'hirano', '石田': 'ishida', '小野寺': 'onodera',
+              '上野': 'ueno', '岩崎': 'iwasaki', '大野': 'ono', '杉山': 'sugiyama', '新井': 'arai',
+              '渡部': 'watanabe', '横山': 'yokoyama', '熊谷': 'kumagai', '窪田': 'kubota', '溝口': 'mizoguchi',
+              '上田': 'ueda', '高田': 'takada', '植田': 'ueda', '小島': 'kojima', '岩田': 'iwata',
+              '矢野': 'yano', '吉岡': 'yoshioka', '小泉': 'koizumi', '小沢': 'ozawa', '飯田': 'iida',
+              '若松': 'wakamatsu', '宮崎': 'miyazaki', '竹内': 'takeuchi', '佐野': 'sano', '菊池': 'kikuchi',
+              '宇野': 'uno', '吉川': 'yoshikawa', '杉田': 'sugita', '谷口': 'taniguchi', '武田': 'takeda',
+              '小田': 'oda', '須藤': 'sudo', '島田': 'shimada', '宮田': 'miyata', '松田': 'matsuda',
+              '小川': 'ogawa',
+              '健太郎': 'kentaro', '大輔': 'daisuke', '翔太': 'shota', '拓也': 'takuya', '達也': 'tatsuya',
+              '淳': 'jun', '誠': 'makoto', '修': 'osamu', '剛': 'tsuyoshi', '浩': 'hiroshi',
+              '隆': 'takashi', '聡': 'satoshi', '正樹': 'masaki', '秀樹': 'hideki', '哲也': 'tetsuya',
+              '和也': 'kazuya', '直樹': 'naoki', '雄一': 'yuichi', '優': 'yu', '涼介': 'ryosuke',
+              '健一': 'kenichi', '勇': 'isamu', '航': 'wataru', '蓮': 'ren', '颯太': 'sota',
+              '陸': 'riku', '悠斗': 'yuto', '陽介': 'yosuke', '大地': 'daichi', '駿': 'shun',
+              '将太': 'shota', '貴之': 'takayuki', '孝': 'takashi', '裕二': 'yuji', '康平': 'kohei',
+              '慎一': 'shinichi', '亮': 'ryo', '智也': 'tomoya', '光': 'hikaru', '仁': 'hitoshi',
+              '清': 'kiyoshi', '正': 'tadashi', '茂': 'shigeru', '博': 'hiroshi', '健': 'ken',
+              '和雄': 'kazuo', '昭雄': 'akio', '隆夫': 'takao', '幸夫': 'yukio',
+              '美咲': 'misaki', '裕子': 'yuko', '真由美': 'mayumi', '恵子': 'keiko', '陽子': 'yoko',
+              '麻衣': 'mai', '優子': 'yuko', '千代': 'chiyo', '愛': 'ai', '舞': 'mai',
+              '結衣': 'yui', '菜々子': 'nanako', '彩': 'aya', '美穂': 'miho', '由美': 'yumi',
+              '明美': 'akemi', '真理': 'mari', '京子': 'kyoko', '友美': 'tomomi', '直美': 'naomi',
+              '絵美': 'emi', '香織': 'kaori', '理恵': 'rie', '沙織': 'saori', '奈々': 'nana',
+              '瞳': 'hitomi', '亜美': 'ami', '智子': 'tomoko', '幸子': 'sachiko', '桜': 'sakura',
+              '花子': 'hanako', '葵': 'aoi', '梓': 'azusa', '茜': 'akane', '楓': 'kaede',
+              '凛': 'rin', '美優': 'miyu', '七海': 'nanami', '陽菜': 'hina', '心': 'kokoro',
+              '和子': 'kazuko', '洋子': 'yoko', '節子': 'setsuko', '文子': 'fumiko', '恵': 'megumi',
+              '久美子': 'kumiko',
+              '東': 'to', '京': 'kyo', '大': 'o', '阪': 'saka', '横': 'yoko', '浜': 'hama',
+              '名': 'na', '古': 'go', '屋': 'ya', '札': 'satsu', '幌': 'poro', '神': 'ko',
+              '戸': 'be', '福': 'fuku', '岡': 'oka', '仙': 'sen', '台': 'dai', '広': 'hiro',
+              '島': 'shima', '関': 'kan', '西': 'sai', '中': 'chu', '部': 'bu',
+              '九': 'kyu', '州': 'shu', '北': 'hok', '海': 'kai', '道': 'do', '四': 'shi',
+              '国': 'koku', '陸': 'riku', '首': 'shu', '都': 'to', '圏': 'ken', '日': 'ni',
+              '本': 'hon', '全': 'zen', '央': 'o', '太': 'tai', '平': 'hei', '洋': 'yo',
+              '南': 'minami', '甲': 'ko', '信': 'shin', '越': 'etsu',
+              'シ': 'shi', 'ス': 'su', 'テ': 'te', 'ム': 'mu', 'エ': 'e', 'ン': 'n',
+              'ジ': 'ji', 'ニ': 'ni', 'ア': 'a', 'リ': 'ri', 'グ': 'gu', 'コ': 'ko',
+              'サ': 'sa', 'ル': 'ru', 'ィ': 'i', 'デ': 'de', 'ザ': 'za', 'イ': 'i',
+              'フ': 'fu', 'ー': '', 'ズ': 'zu', 'ト': 'to', 'ラ': 'ra', 'ベ': 'be',
+              'ノ': 'no', 'ロ': 'ro', 'ク': 'ku', 'ソ': 'so', 'ュ': 'yu', 'シ': 'shi',
+              'ョ': 'yo', 'ダ': 'da', 'マ': 'ma', 'ケ': 'ke', 'ビ': 'bi', 'プ': 'pu',
+              'ホ': 'ho', 'ナ': 'na', 'ボ': 'bo', 'チ': 'chi', 'タ': 'ta',
+              '商': 'sho', '事': 'ji', '建': 'ken', '設': 'setsu', '物': 'butsu', '流': 'ryu',
+              '製': 'sei', '薬': 'yaku', '不': 'fu', '動': 'do', '産': 'san', '開': 'kai',
+              '発': 'hatsu', '通': 'tsu', '電': 'den', '子': 'shi', '機': 'ki', '械': 'kai',
+              '化': 'ka', '学': 'gaku', '金': 'kin', '属': 'zoku', '繊': 'sen', '維': 'i',
+              '食': 'shoku', '品': 'hin', '運': 'un', '輸': 'yu', '情': 'jo', '報': 'ho',
+              '総': 'so', '合': 'go', '精': 'sei', '密': 'mitsu', '自': 'ji', '車': 'sha'
+            };
+
+            let result = '';
+            for (let i = 0; i < text.length; i++) {
+              const char = text[i];
+              if (romajiMap[char]) {
+                result += romajiMap[char];
+              }
+            }
+            return result;
+          };
+
+          const generateCard = () => {
+            const location = locations[randomNum(0, locations.length - 1)];
+            const lastName = lastNames[randomNum(0, lastNames.length - 1)];
+            const isMale = Math.random() > 0.3;
+            const firstName = isMale 
+              ? firstNamesMale[randomNum(0, firstNamesMale.length - 1)]
+              : firstNamesFemale[randomNum(0, firstNamesFemale.length - 1)];
+            
+            const companyPrefix = companyPrefixes[randomNum(0, companyPrefixes.length - 1)];
+            const companyType = companyTypes[randomNum(0, companyTypes.length - 1)];
+            const companySuffix = companySuffixes[randomNum(0, companySuffixes.length - 1)];
+            const companyDescriptor = companyDescriptors[randomNum(0, companyDescriptors.length - 1)];
+            const basePrefix = Math.random() < 0.2 ? '' : companyPrefix;
+            const baseName = `${basePrefix}${companyType}`;
+            const companyPatterns = [
+              `${companySuffix} ${baseName}`,
+              `${baseName}${companySuffix}`,
+              `${baseName}${companyDescriptor}`,
+              `${baseName}・${companyDescriptor}`,
+              `${companyDescriptor}${baseName}`,
+              `${companySuffix} ${baseName}${companyDescriptor}`,
+              `${baseName} ${companyDescriptor}`
+            ];
+            const companyName = companyPatterns[randomNum(0, companyPatterns.length - 1)].replace(/\s+/g, ' ').trim();
+            
+            const useSecondGiven = Math.random() < 0.08;
+            const secondGiven = isMale
+              ? firstNamesMale[randomNum(0, firstNamesMale.length - 1)]
+              : firstNamesFemale[randomNum(0, firstNamesFemale.length - 1)];
+            const givenName = useSecondGiven ? `${firstName}・${secondGiven}` : firstName;
+            const name = `${lastName} ${givenName}`;
+            const position = positions[randomNum(0, positions.length - 1)];
+            const building = `${randomNum(1, 10)}-${randomNum(1, 20)}-${randomNum(1, 30)}`;
+            const address = `${location.pref}${location.city}${building}`;
+            
+            const emailDomainRaw = toRomaji(companyName.replace(/株式会社|有限会社|合同会社|\s|・/g, ''));
+            const lastNameRomajiRaw = toRomaji(lastName);
+            const firstNameRomajiRaw = toRomaji(firstName);
+            const domainSeeds = ['sakura', 'mirai', 'kizuna', 'haru', 'ao', 'nexus', 'prime', 'zen', 'axis', 'terra', 'sol', 'core', 'field', 'spark'];
+            const emailDomain = emailDomainRaw || domainSeeds[randomNum(0, domainSeeds.length - 1)];
+            const lastNameRomaji = lastNameRomajiRaw || 'yamada';
+            const firstNameRomaji = firstNameRomajiRaw || 'taro';
+            const emailFormats = [
+              () => `${firstNameRomaji.charAt(0)}.${lastNameRomaji}`,
+              () => `${firstNameRomaji}.${lastNameRomaji}`,
+              () => `${lastNameRomaji}.${firstNameRomaji.charAt(0)}`,
+              () => `${lastNameRomaji}.${firstNameRomaji}`,
+              () => `${firstNameRomaji}${lastNameRomaji}`,
+              () => `${lastNameRomaji}${firstNameRomaji}`,
+              () => `${lastNameRomaji}_${firstNameRomaji}`,
+              () => `${firstNameRomaji}-${lastNameRomaji}`,
+              () => `${firstNameRomaji}${lastNameRomaji.charAt(0)}`
+            ];
+            const localRaw = emailFormats[randomNum(0, emailFormats.length - 1)]();
+            const localSanitized = localRaw.replace(/^[._-]+/, '').replace(/[._-]+$/, '');
+            const localWithNumber = Math.random() < 0.25 ? `${localSanitized}${randomNum(1, 99)}` : localSanitized;
+            const tldOptions = ['co.jp', 'jp', 'com'];
+            const email = `${localWithNumber}@${emailDomain}.${tldOptions[randomNum(0, tldOptions.length - 1)]}`;
+            const urlFormats = [
+              () => `https://www.${emailDomain}.co.jp`,
+              () => `https://${emailDomain}.co.jp`,
+              () => `https://www.${emailDomain}.jp`,
+              () => `https://${emailDomain}.jp`,
+              () => `https://${emailDomain}.com`
+            ];
+            const url = urlFormats[randomNum(0, urlFormats.length - 1)]();
+
+            return {
+              cardNumber: String(randomNum(100, 9999)).padStart(4, '0'),
+              companyName,
+              name,
+              position,
+              zipCode: location.zip,
+              address,
+              phone: generatePhone(location.area),
+              fax: Math.random() > 0.5 ? generatePhone(location.area) : '',
+              mobile: Math.random() > 0.4 ? generateMobile() : '',
+              email,
+              url
+            };
+          };
+
+          const formatTime = (ms) => {
+            const seconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            const remainingMs = Math.floor((ms % 1000) / 100);
+            
+            if (minutes > 0) {
+              return `${minutes}:${String(remainingSeconds).padStart(2, '0')}.${remainingMs}`;
+            }
+            return `${remainingSeconds}.${remainingMs}秒`;
+          };
+
+          const startTraining = (isReview = false) => {
+            const cards = isReview && incorrectQuestions.length > 0
+              ? incorrectQuestions
+              : Array.from({ length: totalQuestions }, () => generateCard());
+            
+            setQuestions(cards);
+            setCurrentIndex(0);
+            setResults([]);
+            setAnswers({});
+            setShowResult(false);
+            setReviewMode(isReview);
+            setStartTime(Date.now());
+            setQuestionStartTime(Date.now());
+            setTimeTaken([]);
+            setCurrentTime(0);
+            setScreen('training');
+          };
+
+          const handleFieldToggle = (field) => {
+            setSelectedFields(prev => ({ ...prev, [field]: !prev[field] }));
+          };
+
+          const handleAnswerChange = (field, value) => {
+            setAnswers(prev => ({ ...prev, [field]: value }));
+          };
+
+          const checkAnswers = () => {
+            const current = questions[currentIndex];
+            const result = {};
+            let correct = 0;
+            let total = 0;
+            const questionTime = Date.now() - questionStartTime;
+
+            Object.keys(selectedFields).forEach(field => {
+              if (selectedFields[field]) {
+                total++;
+                const userAnswer = (answers[field] || '').trim();
+                const correctAnswer = (current[field] || '').trim();
+                const isCorrect = userAnswer === correctAnswer;
+                result[field] = { 
+                  correct: isCorrect, 
+                  userAnswer, 
+                  correctAnswer 
+                };
+                if (isCorrect) correct++;
+              }
+            });
+
+            setResults([...results, { ...result, score: { correct, total }, timeTaken: questionTime }]);
+            setTimeTaken([...timeTaken, questionTime]);
+            setShowResult(true);
+          };
+
+          const canProceed = () => {
+            if (!showResult) return false;
+            
+            const current = questions[currentIndex];
+            return Object.keys(selectedFields).every(field => {
+              if (!selectedFields[field]) return true;
+              const userAnswer = (answers[field] || '').trim();
+              const correctAnswer = (current[field] || '').trim();
+              return userAnswer === correctAnswer;
+            });
+          };
+
+          const nextQuestion = () => {
+            if (currentIndex < questions.length - 1) {
+              setCurrentIndex(currentIndex + 1);
+              setAnswers({});
+              setShowResult(false);
+              setQuestionStartTime(Date.now());
+              setCurrentTime(0);
+            } else {
+              const totalTime = Date.now() - startTime;
+              const totalCorrect = results.reduce((sum, r) => sum + r.score.correct, 0) + 
+                                   (results[currentIndex]?.score.correct || 0);
+              const totalQuestions = results.reduce((sum, r) => sum + r.score.total, 0) + 
+                                    (results[currentIndex]?.score.total || 0);
+              
+              const incorrect = [];
+              results.forEach((r, idx) => {
+                const hasIncorrect = Object.keys(r).some(field => {
+                  if (field === 'score' || field === 'timeTaken') return false;
+                  return !r[field].correct;
+                });
+                if (hasIncorrect) {
+                  incorrect.push(questions[idx]);
+                }
+              });
+
+              setIncorrectQuestions(incorrect);
+
+              const sessionData = {
+                date: new Date().toISOString(),
+                mode: reviewMode ? '復習モード' : '通常モード',
+                totalQuestions,
+                correct: totalCorrect,
+                percentage: Math.round((totalCorrect / totalQuestions) * 100),
+                totalTime,
+                averageTime: Math.round(totalTime / questions.length),
+                selectedFields: { ...selectedFields },
+                incorrectCount: incorrect.length
+              };
+
+              const newHistory = [sessionData, ...history].slice(0, 50);
+              setHistory(newHistory);
+              localStorage.setItem('trainingHistory', JSON.stringify(newHistory));
+
+              setScreen('result');
+            }
+          };
+
+          const restart = () => {
+            setScreen('setup');
+            setCurrentIndex(0);
+            setResults([]);
+            setAnswers({});
+            setShowResult(false);
+            setReviewMode(false);
+          };
+
+          const viewHistory = () => {
+            setScreen('history');
+          };
+
+          const deleteHistory = (index) => {
+            const newHistory = history.filter((_, i) => i !== index);
+            setHistory(newHistory);
+            localStorage.setItem('trainingHistory', JSON.stringify(newHistory));
+          };
+
+          const clearAllHistory = () => {
+            if (confirm('すべての履歴を削除しますか？')) {
+              setHistory([]);
+              localStorage.removeItem('trainingHistory');
+            }
+          };
+
+          const currentCard = questions[currentIndex];
+          const activeFieldsCount = Object.values(selectedFields).filter(v => v).length;
+
+          if (screen === 'setup') {
+            return (
+              <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
+                <div className="max-w-3xl mx-auto">
+                  <div className="bg-white rounded-lg shadow-xl p-8">
+                    <div className="text-center mb-8">
+                      <div className="text-6xl mb-4">📇</div>
+                      <h1 className="text-3xl font-bold text-gray-800 mb-2">名刺入力アプリ</h1>
+                      <p className="text-gray-600">問題数と入力項目を選択してください</p>
+                    </div>
+
+                    <div className="mb-8">
+                      <h2 className="text-xl font-bold mb-4 text-gray-800">問題数を選択</h2>
+                      <div className="grid grid-cols-3 gap-4">
+                        {[10, 30, 50, 100, 200, 300].map(num => (
+                          <button
+                            key={num}
+                            onClick={() => setTotalQuestions(num)}
+                            className={`py-4 px-6 rounded-lg font-bold text-lg transition-all ${
+                              totalQuestions === num
+                                ? 'bg-indigo-600 text-white shadow-lg scale-105'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                          >
+                            {num}問
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="mb-8">
+                      <h2 className="text-xl font-bold mb-4 text-gray-800">
+                        入力項目を選択 
+                        <span className="text-sm font-normal text-gray-500 ml-2">
+                          ({activeFieldsCount}項目選択中)
+                        </span>
+                      </h2>
+                      <div className="grid grid-cols-2 gap-3">
+                        {Object.keys(fieldLabels).map(field => (
+                          <label
+                            key={field}
+                            className={`flex items-center p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                              selectedFields[field]
+                                ? 'border-indigo-600 bg-indigo-50'
+                                : 'border-gray-200 bg-white hover:bg-gray-50'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedFields[field]}
+                              onChange={() => handleFieldToggle(field)}
+                              className="w-5 h-5 text-indigo-600 rounded"
+                            />
+                            <span className="ml-3 font-medium text-gray-700">
+                              {fieldLabels[field]}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <button
+                        onClick={() => startTraining(false)}
+                        disabled={activeFieldsCount === 0}
+                        className={`w-full py-4 px-6 rounded-lg font-bold text-lg transition-all ${
+                          activeFieldsCount === 0
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg hover:scale-105'
+                        }`}
+                      >
+                        🚀 練習を開始する
+                      </button>
+
+                      {incorrectQuestions.length > 0 && (
+                        <button
+                          onClick={() => startTraining(true)}
+                          className="w-full py-4 px-6 rounded-lg font-bold text-lg bg-orange-600 text-white hover:bg-orange-700 shadow-lg hover:scale-105 transition-all"
+                        >
+                          📚 復習モード ({incorrectQuestions.length}問)
+                        </button>
+                      )}
+
+                      {history.length > 0 && (
+                        <button
+                          onClick={viewHistory}
+                          className="w-full py-3 px-6 rounded-lg font-bold text-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-all"
+                        >
+                          📊 練習履歴を見る
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          if (screen === 'training' && currentCard) {
+            return (
+              <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
+                <div className="max-w-6xl mx-auto">
+                  <div className="mb-6 flex justify-between items-center">
+                    <div>
+                      <div className="text-lg font-bold text-gray-700">
+                        {reviewMode ? '📚 復習モード' : ''} 問題 {currentIndex + 1} / {questions.length}
+                      </div>
+                      <div className="text-2xl font-bold text-indigo-600 mt-1">
+                        ⏱️ {formatTime(currentTime)}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-sm text-gray-600">
+                        正解数: {results.reduce((sum, r) => sum + r.score.correct, 0)} / 
+                        {results.reduce((sum, r) => sum + r.score.total, 0)}
+                      </div>
+                      <button
+                        onClick={restart}
+                        className="px-4 py-2 text-sm font-bold rounded-lg border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 transition-all"
+                      >
+                        ホームに戻る
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-6 items-start">
+                    <div className="bg-white rounded-lg shadow-xl p-8 lg:sticky lg:top-6 self-start">
+                      <h2 className="text-xl font-bold mb-4 text-center text-gray-800">名刺</h2>
+                      <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-300 rounded-lg p-6 shadow-inner">
+                        <div className="mb-4 pb-3 border-b-2 border-indigo-600">
+                          <div className="text-xs text-indigo-600 font-bold mb-2">No.{currentCard.cardNumber}</div>
+                          <div className="text-lg font-bold text-indigo-700 mb-1">{currentCard.companyName}</div>
+                        </div>
+                        <div className="mb-4">
+                          <div className="text-2xl font-bold text-gray-800 mb-2">{currentCard.name}</div>
+                          <div className="text-base text-gray-600">{currentCard.position}</div>
+                        </div>
+                        <div className="space-y-1 text-sm text-gray-700">
+                          <div className="flex">
+                            <span className="w-16 font-bold">〒</span>
+                            <span>{currentCard.zipCode}</span>
+                          </div>
+                          <div className="flex">
+                            <span className="w-16"></span>
+                            <span>{currentCard.address}</span>
+                          </div>
+                          <div className="flex">
+                            <span className="w-16 font-bold">TEL:</span>
+                            <span>{currentCard.phone}</span>
+                          </div>
+                          {currentCard.fax && (
+                            <div className="flex">
+                              <span className="w-16 font-bold">FAX:</span>
+                              <span>{currentCard.fax}</span>
+                            </div>
+                          )}
+                          {currentCard.mobile && (
+                            <div className="flex">
+                              <span className="w-16 font-bold">Mobile:</span>
+                              <span>{currentCard.mobile}</span>
+                            </div>
+                          )}
+                          <div className="flex">
+                            <span className="w-16 font-bold">Email:</span>
+                            <span className="text-xs">{currentCard.email}</span>
+                          </div>
+                          <div className="flex">
+                            <span className="w-16 font-bold">URL:</span>
+                            <span className="text-xs">{currentCard.url}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-lg shadow-xl p-8 lg:max-h-[calc(100vh-160px)] lg:overflow-y-auto lg:pr-2">
+                      <h2 className="text-xl font-bold mb-4 text-center text-gray-800">入力フォーム</h2>
+                      <div className="space-y-4">
+                        {Object.keys(selectedFields).map(field => {
+                          if (!selectedFields[field]) return null;
+                          
+                          const result = showResult && results[currentIndex]?.[field];
+                          const userAnswer = (answers[field] || '').trim();
+                          const correctAnswer = currentCard[field] || '';
+                          const isCorrect = showResult ? userAnswer === correctAnswer : result?.correct;
+                          
+                          return (
+                            <div key={field}>
+                              <label className="block text-sm font-bold text-gray-700 mb-1">
+                                {fieldLabels[field]}
+                              </label>
+                              <input
+                                type="text"
+                                value={answers[field] || ''}
+                                onChange={(e) => handleAnswerChange(field, e.target.value)}
+                                disabled={showResult && isCorrect}
+                                className={`w-full px-4 py-2 border-2 rounded-lg transition-all ${
+                                  showResult
+                                    ? isCorrect
+                                      ? 'border-green-500 bg-green-50'
+                                      : 'border-red-500 bg-white focus:border-red-600 focus:outline-none'
+                                    : 'border-gray-300 focus:border-indigo-500 focus:outline-none'
+                                }`}
+                                placeholder={showResult && !isCorrect ? '正解を入力してください' : ''}
+                              />
+                              {showResult && !isCorrect && (
+                                <div className="mt-1 text-sm">
+                                  <div className="text-red-600">✗ 入力: {result.userAnswer || '(未入力)'}</div>
+                                  <div className="text-green-600">✓ 正解: {result.correctAnswer}</div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <div className="mt-6 space-y-3">
+                        {!showResult ? (
+                          <button
+                            onClick={checkAnswers}
+                            className="w-full py-3 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition-all shadow-lg"
+                          >
+                            ✓ 答え合わせ
+                          </button>
+                        ) : (
+                          <>
+                            <div className="text-center p-4 bg-gray-100 rounded-lg">
+                              <div className="text-2xl font-bold text-gray-800">
+                                {results[currentIndex].score.correct} / {results[currentIndex].score.total} 正解
+                              </div>
+                              <div className="text-sm text-gray-600 mt-1">
+                                ⏱️ {formatTime(results[currentIndex].timeTaken)}
+                              </div>
+                              {!canProceed() && (
+                                <div className="mt-2 text-sm text-red-600 font-medium">
+                                  ⚠ すべての項目に正解を入力してください
+                                </div>
+                              )}
+                            </div>
+                            <button
+                              onClick={nextQuestion}
+                              disabled={!canProceed()}
+                              className={`w-full py-3 rounded-lg font-bold transition-all ${
+                                canProceed()
+                                  ? 'bg-green-600 text-white hover:bg-green-700'
+                                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                              }`}
+                            >
+                              → {currentIndex < questions.length - 1 ? '次の問題へ' : '結果を見る'}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          if (screen === 'result') {
+            const totalCorrect = results.reduce((sum, r) => sum + r.score.correct, 0);
+            const totalQuestions = results.reduce((sum, r) => sum + r.score.total, 0);
+            const percentage = Math.round((totalCorrect / totalQuestions) * 100);
+            const totalTime = results.reduce((sum, r) => sum + r.timeTaken, 0);
+            const averageTime = Math.round(totalTime / results.length);
+
+            return (
+              <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
+                <div className="max-w-2xl mx-auto">
+                  <div className="bg-white rounded-lg shadow-xl p-8">
+                    <div className="text-center mb-8">
+                      <div className="text-6xl mb-4">
+                        {percentage >= 90 ? '🏆' : percentage >= 70 ? '🎉' : percentage >= 50 ? '👍' : '💪'}
+                      </div>
+                      <h1 className="text-3xl font-bold text-gray-800 mb-2">
+                        {reviewMode ? '復習完了!' : '練習完了!'}
+                      </h1>
+                      <div className="text-5xl font-bold text-indigo-600 my-6">
+                        {totalCorrect} / {totalQuestions}
+                      </div>
+                      <div className="text-2xl font-bold text-gray-700">
+                        正解率: {percentage}%
+                      </div>
+                      <div className="mt-4 space-y-2">
+                        <div className="text-lg text-gray-600">
+                          ⏱️ 合計時間: {formatTime(totalTime)}
+                        </div>
+                        <div className="text-lg text-gray-600">
+                          📊 平均時間: {formatTime(averageTime)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mb-8">
+                      <h2 className="text-xl font-bold mb-4 text-gray-800">項目別正解率</h2>
+                      <div className="space-y-2">
+                        {Object.keys(selectedFields).map(field => {
+                          if (!selectedFields[field]) return null;
+                          
+                          const fieldResults = results.map(r => r[field]).filter(Boolean);
+                          const correct = fieldResults.filter(r => r.correct).length;
+                          const total = fieldResults.length;
+                          const rate = Math.round((correct / total) * 100);
+                          
+                          return (
+                            <div key={field} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                              <span className="font-medium text-gray-700">{fieldLabels[field]}</span>
+                              <div className="flex items-center gap-3">
+                                <span className="text-sm text-gray-600">{correct}/{total}</span>
+                                <span className={`font-bold ${rate >= 80 ? 'text-green-600' : rate >= 60 ? 'text-yellow-600' : 'text-red-600'}`}> {
+                                  rate}%
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {incorrectQuestions.length > 0 && !reviewMode && (
+                      <div className="mb-6 p-4 bg-orange-50 border-2 border-orange-200 rounded-lg">
+                        <div className="text-center">
+                          <div className="text-orange-700 font-bold mb-2">
+                            💡 間違えた問題が {incorrectQuestions.length} 問あります
+                          </div>
+                          <button
+                            onClick={() => {
+                              startTraining(true);
+                            }}
+                            className="px-6 py-2 bg-orange-600 text-white rounded-lg font-bold hover:bg-orange-700 transition-all"
+                          >
+                            復習モードで再挑戦
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    <button
+                      onClick={restart}
+                      className="w-full py-4 bg-indigo-600 text-white rounded-lg font-bold text-lg hover:bg-indigo-700 transition-all shadow-lg"
+                    >
+                      ↻ 最初に戻る
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          if (screen === 'history') {
+            return (
+              <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
+                <div className="max-w-4xl mx-auto">
+                  <div className="bg-white rounded-lg shadow-xl p-8">
+                    <div className="flex justify-between items-center mb-6">
+                      <h1 className="text-3xl font-bold text-gray-800">📊 練習履歴</h1>
+                      <div className="space-x-2">
+                        {history.length > 0 && (
+                          <button
+                            onClick={clearAllHistory}
+                            className="px-4 py-2 text-sm font-bold rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition-all"
+                          >
+                            すべて削除
+                          </button>
+                        )}
+                        <button
+                          onClick={restart}
+                          className="px-4 py-2 text-sm font-bold rounded-lg border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 transition-all"
+                        >
+                          ホームに戻る
+                        </button>
+                      </div>
+                    </div>
+
+                    {history.length === 0 ? (
+                      <div className="text-center py-12">
+                        <div className="text-6xl mb-4">📝</div>
+                        <p className="text-gray-600 text-lg">まだ練習履歴がありません</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {history.map((session, index) => (
+                          <div key={index} className="border-2 border-gray-200 rounded-lg p-4 hover:border-indigo-300 transition-all">
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <span className="text-sm text-gray-500">
+                                    {new Date(session.date).toLocaleString('ja-JP')}
+                                  </span>
+                                  {session.mode === '復習モード' && (
+                                    <span className="px-2 py-1 text-xs font-bold bg-orange-100 text-orange-700 rounded">
+                                      復習モード
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                  <div>
+                                    <div className="text-xs text-gray-500">正解率</div>
+                                    <div className={`text-2xl font-bold ${
+                                      session.percentage >= 80 ? 'text-green-600' : 
+                                      session.percentage >= 60 ? 'text-yellow-600' : 'text-red-600'
+                                    }`}> {
+                                      session.percentage}%
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div className="text-xs text-gray-500">正解数</div>
+                                    <div className="text-lg font-bold text-gray-700">
+                                      {session.correct}/{session.totalQuestions}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div className="text-xs text-gray-500">合計時間</div>
+                                    <div className="text-lg font-bold text-gray-700">
+                                      {formatTime(session.totalTime)}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div className="text-xs text-gray-500">平均時間</div>
+                                    <div className="text-lg font-bold text-gray-700">
+                                      {formatTime(session.averageTime)}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="mt-3 flex flex-wrap gap-1">
+                                  {Object.keys(session.selectedFields).map(field => 
+                                    session.selectedFields[field] && (
+                                      <span key={field} className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
+                                        {fieldLabels[field]}
+                                      </span>
+                                    )
+                                  )}
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => deleteHistory(index)}
+                                className="ml-4 text-red-600 hover:text-red-800 transition-all"
+                                title="削除"
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          return null;
+        };
+
+        ReactDOM.render(<BusinessCardTrainingApp />, document.getElementById('root'));
+    </script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js');
+        });
+      }
+    </script>
+</body>
+</html>
 <script>
   const addresses = [
     // other entries
